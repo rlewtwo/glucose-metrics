@@ -1,7 +1,7 @@
-import { calculateMetrics } from './services/metricsCalculator';
+import { calculateMetrics, MetricResult } from './services/metricsCalculator';
 import { GlucoseLevel } from './models';
 
-jest.mock('../models', () => ({
+jest.mock('./models', () => ({
   GlucoseLevel: {
     findAll: jest.fn(),
   },

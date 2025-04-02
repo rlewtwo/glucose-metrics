@@ -1,8 +1,33 @@
 import dayjs from 'dayjs';
 import { GlucoseLevel } from '../models';
+import NodeCache from 'node-cache';
+import { Op } from 'sequelize';
 
-export async function calculateMetrics(memberId: number, period: 'last7' | 'month') {
-  const now = dayjs();
+const cache = new NodeCache({ stdTTL: 300 }); // cache for 5 minutes
+
+export interface MetricResult {
+  averageGlucose: number;
+  timeAboveRange: number;
+  timeBelowRange: number;
+  deltas: {
+    avgDelta: number;
+    aboveDelta: number;
+    belowDelta: number;
+  };
+}
+
+export async function calculateMetrics(memberId: number, period: 'last7' | 'month'): Promise<MetricResult> {
+  const key = `${memberId}-${period}`;
+  const cached = cache.get<MetricResult>(key);
+  if (cached) return cached;
+
+  // Get the latest testedAt date from the database
+  const latest = await GlucoseLevel.findOne({
+    where: { memberId },
+    order: [['testedAt', 'DESC']],
+  });
+
+  const now = latest ? dayjs(latest.testedAt) : dayjs(); // fallback to now if no data
 
   const ranges = {
     last7: {
@@ -18,23 +43,24 @@ export async function calculateMetrics(memberId: number, period: 'last7' | 'mont
   const [startCurrent, endCurrent] = ranges[period].current;
   const [startPrev, endPrev] = ranges[period].previous;
 
-  const currentValues = await GlucoseLevel.findAll({
-    where: {
-      memberId,
-      testedAt: {
-        $between: [startCurrent.toDate(), endCurrent.toDate()],
+  const [currentValues, previousValues] = await Promise.all([
+    GlucoseLevel.findAll({
+      where: {
+        memberId,
+        testedAt: {
+          [Op.between]: [startCurrent.toDate(), endCurrent.toDate()],
+        },
       },
-    },
-  });
-
-  const previousValues = await GlucoseLevel.findAll({
-    where: {
-      memberId,
-      testedAt: {
-        $between: [startPrev.toDate(), endPrev.toDate()],
+    }),
+    GlucoseLevel.findAll({
+      where: {
+        memberId,
+        testedAt: {
+          [Op.between]: [startPrev.toDate(), endPrev.toDate()],
+        },
       },
-    },
-  });
+    }),
+  ]);
 
   const calc = (values: number[]) => {
     if (values.length === 0) return { avg: 0, above: 0, below: 0 };
@@ -44,20 +70,20 @@ export async function calculateMetrics(memberId: number, period: 'last7' | 'mont
     return { avg, above, below };
   };
 
-  const currVals = currentValues.map((r) => r.value);
-  const prevVals = previousValues.map((r) => r.value);
+  const current = calc(currentValues.map(r => r.value));
+  const previous = calc(previousValues.map(r => r.value));
 
-  const current = calc(currVals);
-  const previous = calc(prevVals);
-
-  return {
-    averageGlucose: current.avg,
-    timeAboveRange: current.above,
-    timeBelowRange: current.below,
+  const result: MetricResult = {
+    averageGlucose: parseFloat(current.avg.toFixed(2)),
+    timeAboveRange: parseFloat(current.above.toFixed(2)),
+    timeBelowRange: parseFloat(current.below.toFixed(2)),
     deltas: {
-      avgDelta: current.avg - previous.avg,
-      aboveDelta: current.above - previous.above,
-      belowDelta: current.below - previous.below,
+      avgDelta: parseFloat((current.avg - previous.avg).toFixed(2)),
+      aboveDelta: parseFloat((current.above - previous.above).toFixed(2)),
+      belowDelta: parseFloat((current.below - previous.below).toFixed(2)),
     },
   };
+
+  cache.set(key, result);
+  return result;
 }

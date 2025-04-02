@@ -1,6 +1,6 @@
 import { Sequelize } from 'sequelize';
-import { MemberFactory } from './member';
-import { GlucoseLevelFactory } from './glucoseLevel';
+import { MemberFactory, Member as MemberModel } from './member';
+import { GlucoseLevelFactory, GlucoseLevel as GlucoseLevelModel } from './glucoseLevel';
 
 const sequelize = new Sequelize({
   dialect: 'sqlite',
@@ -10,7 +10,6 @@ const sequelize = new Sequelize({
 const Member = MemberFactory(sequelize);
 const GlucoseLevel = GlucoseLevelFactory(sequelize);
 
-// ✅ Explicit foreign key definition
 Member.hasMany(GlucoseLevel, {
   foreignKey: 'memberId',
   as: 'glucoseLevels',
@@ -21,4 +20,11 @@ GlucoseLevel.belongsTo(Member, {
   as: 'member',
 });
 
-export { sequelize, Member, GlucoseLevel };
+// ✅ Export models and their types
+export {
+  sequelize,
+  Member,
+  GlucoseLevel,
+  MemberModel,
+  GlucoseLevelModel,
+};

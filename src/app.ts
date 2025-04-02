@@ -1,6 +1,8 @@
+import { setupSwagger } from './swagger';
 import express from 'express';
 import { sequelize } from './models';
 import metricsRouter from './routes/metrics';
+
 
 const app = express();
 const PORT = 3000;
@@ -12,3 +14,5 @@ app.listen(PORT, async () => {
   await sequelize.authenticate();
   console.log(`🚀 Server running at http://localhost:${PORT}`);
 });
+
+setupSwagger(app); // just before app.listen
