@@ -40,9 +40,7 @@ This project is a full-stack application for calculating and displaying glucose 
 ```http
 GET /api/metrics/:memberId
 Example Response
-json
-Copy
-Edit
+
 {
   "last7Days": {
     "averageGlucose": 134.74,
