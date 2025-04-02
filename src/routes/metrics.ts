@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Router, Request, Response } from 'express';
 import { calculateMetrics } from '../services/metricsCalculator';
 
 const router = express.Router();

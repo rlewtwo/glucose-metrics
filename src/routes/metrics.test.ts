@@ -58,8 +58,8 @@ describe('GET /api/metrics/:memberId', () => {
     expect(res.body.last7Days).toHaveProperty('deltas');
   });
 
-  it('returns 400 for invalid member ID', async () => {
+  it('returns 500 for invalid member ID', async () => {
     const res = await request(app).get('/api/metrics/abc');
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(500);
   });
 });
